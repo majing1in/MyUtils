@@ -60,6 +60,19 @@ public class HttpUtil {
      * @param headers 请求头
      */
     public static String doGet(String path, Map<String, String> params, Map<String, String> headers) {
+        return doGet(path, null, null, params, headers);
+    }
+
+    /**
+     * GET请求方式(代理)
+     *
+     * @param path      请求路径
+     * @param proxyIp   代理地址
+     * @param proxyPort 代理端口
+     * @param params    请求参数
+     * @param headers   请求头
+     */
+    public static String doGet(String path, String proxyIp, Integer proxyPort, Map<String, String> params, Map<String, String> headers) {
         if (params != null && !params.isEmpty()) {
             // GET请求参数在URL上
             StringBuilder paramsBuilder = new StringBuilder("?");
@@ -74,7 +87,7 @@ public class HttpUtil {
             path = path + paramsBuilder;
         }
         try {
-            HttpURLConnection connection = createHttpUrlConnection(path, "GET", headers);
+            HttpURLConnection connection = createHttpUrlConnection(path, proxyIp, proxyPort, "GET", headers);
             String result = get(connection.getInputStream());
             connection.disconnect();
             return result;
@@ -92,8 +105,21 @@ public class HttpUtil {
      * @param headers 请求头
      */
     public static String doPost(String path, String json, Map<String, String> headers) {
+        return doPost(path, null, null, json, headers);
+    }
+
+    /**
+     * POST JSON请求(代理)
+     *
+     * @param path      请求路径
+     * @param proxyIp   代理地址
+     * @param proxyPort 代理端口
+     * @param json      请求JSON
+     * @param headers   请求头
+     */
+    public static String doPost(String path, String proxyIp, Integer proxyPort, String json, Map<String, String> headers) {
         try {
-            HttpURLConnection connection = createHttpUrlConnection(path, "POST", headers);
+            HttpURLConnection connection = createHttpUrlConnection(path, proxyIp, proxyPort, "POST", headers);
             connection.setRequestProperty("Content-Type", "application/json");
             send(connection.getOutputStream(), json);
             String result = get(connection.getInputStream());
@@ -113,8 +139,21 @@ public class HttpUtil {
      * @param headers 请求头
      */
     public static String doPost(String path, Map<String, Object> params, Map<String, String> headers) {
+        return doPost(path, null, null, params, headers);
+    }
+
+    /**
+     * POST表单请求(代理)
+     *
+     * @param path      请求路径
+     * @param proxyIp   代理地址
+     * @param proxyPort 代理端口
+     * @param params    请求参数
+     * @param headers   请求头
+     */
+    public static String doPost(String path, String proxyIp, Integer proxyPort, Map<String, Object> params, Map<String, String> headers) {
         try {
-            HttpURLConnection connection = createHttpUrlConnection(path, "POST", headers);
+            HttpURLConnection connection = createHttpUrlConnection(path, proxyIp, proxyPort, "POST", headers);
             connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             OutputStream outputStream = connection.getOutputStream();
             // 构建表单参数
@@ -142,6 +181,38 @@ public class HttpUtil {
     }
 
     /**
+     * 发送POST请求，传输文件
+     *
+     * @param path        请求地址
+     * @param filePath    文件路径
+     * @param headers     文件路径
+     * @param contentType MIME类型
+     */
+    public static String doPost(String path, String filePath, Map<String, String> headers, String contentType) {
+        HttpURLConnection connection = createHttpUrlConnection(path, "POST", headers);
+        connection.setRequestProperty("Content-Type", contentType);
+        try {
+            File file = new File(filePath);
+            FileInputStream fis = new FileInputStream(file);
+            OutputStream outputStream = connection.getOutputStream();
+            byte[] bytes = new byte[8192];
+            while (fis.read(bytes) != -1) {
+                outputStream.write(bytes);
+            }
+            fis.close();
+            outputStream.flush();
+            outputStream.close();
+            InputStream inputStream = connection.getInputStream();
+            String result = get(inputStream);
+            connection.disconnect();
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
      * 构建HttpURLConnection对象
      *
      * @param path    请求路径
@@ -149,17 +220,38 @@ public class HttpUtil {
      * @param headers 请求头
      */
     public static HttpURLConnection createHttpUrlConnection(String path, String method, Map<String, String> headers) {
+        return createHttpUrlConnection(path, null, null, method, headers);
+    }
+
+    /**
+     * 构建HttpURLConnection对象
+     *
+     * @param path      请求路径
+     * @param proxyIp   代理地址
+     * @param proxyPort 代理端口
+     * @param method    请求方式
+     * @param headers   请求头
+     */
+    public static HttpURLConnection createHttpUrlConnection(String path, String proxyIp, Integer proxyPort, String method, Map<String, String> headers) {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(path);
+            // 请求代理设置
+            if (proxyIp != null && proxyPort != null && !"".equals(proxyIp) && 0 != proxyPort) {
+                Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyIp, proxyPort));
+                connection = (HttpURLConnection) url.openConnection(proxy);
+            } else {
+                connection = (HttpURLConnection) url.openConnection();
+            }
             // 设置cookie策略，只接受与你对话服务器的cookie，而不接收Internet上其它服务器发送的cookie
             CookieManager cookieManager = new CookieManager();
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ORIGINAL_SERVER);
             CookieHandler.setDefault(cookieManager);
-            // 打开连接请求
-            connection = (HttpURLConnection) url.openConnection();
             // 请求方式
             connection.setRequestMethod(method);
+            // 设置超时时间
+            connection.setConnectTimeout(60000);
+            connection.setReadTimeout(60000);
             // 构建请求头
             connection.setRequestProperty("Connection", "keep-alive");
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; rv:6.0.2) Gecko/20100101 Firefox/6.0.2");
