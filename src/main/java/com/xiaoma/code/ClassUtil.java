@@ -3,15 +3,17 @@ package com.xiaoma.code;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * @Author: Xiaoma
+ * @Author: majing1in
  * @Date: 2022/07/07 20:11
  * @Email: 2533144458@qq.com
  */
@@ -122,4 +124,167 @@ public class ClassUtil {
         }
         return obj;
     }
+
+    /**
+     * 获取类上注解指定属性值
+     *
+     * @param obj             对象
+     * @param clazz           注解类型
+     * @param annotationField 注解属性名
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> V getObjAnnotationValue(Object obj, Class<A> clazz, String annotationField) {
+        return getAnnotationValue(obj, clazz, null, annotationField, 1);
+    }
+
+    /**
+     * 获取方法上注解指定属性值
+     *
+     * @param obj             对象
+     * @param clazz           注解类型
+     * @param attributeName   属性名称
+     * @param annotationField 注解属性名
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> V getFieldAnnotationValue(Object obj, Class<A> clazz, String attributeName, String annotationField) {
+        return getAnnotationValue(obj, clazz, attributeName, annotationField, 2);
+
+    }
+
+    /**
+     * 获取方法上注解指定属性值
+     *
+     * @param obj             对象
+     * @param clazz           注解类型
+     * @param attributeName   方法名称
+     * @param annotationField 注解属性名
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> V getMethodAnnotationValue(Object obj, Class<A> clazz, String attributeName, String annotationField) {
+        return getAnnotationValue(obj, clazz, attributeName, annotationField, 3);
+    }
+
+    /**
+     * 获取方法上注解指定属性值
+     *
+     * @param obj           对象
+     * @param clazz         注解类型
+     * @param attributeName 方法名称
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> Map<String, V> getObjAnnotationValues(Object obj, Class<A> clazz, String attributeName) {
+        return getAnnotationValues(obj, clazz, attributeName, 1);
+    }
+
+
+    /**
+     * 获取方法上注解指定属性值
+     *
+     * @param obj           对象
+     * @param clazz         注解类型
+     * @param attributeName 方法名称
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> Map<String, V> getFieldAnnotationValues(Object obj, Class<A> clazz, String attributeName) {
+        return getAnnotationValues(obj, clazz, attributeName, 2);
+    }
+
+
+    /**
+     * 获取方法上注解指定属性值
+     *
+     * @param obj           对象
+     * @param clazz         注解类型
+     * @param attributeName 方法名称
+     * @return 注解属性值
+     */
+    public static <A extends Annotation, V> Map<String, V> getMethodAnnotationValues(Object obj, Class<A> clazz, String attributeName) {
+        return getAnnotationValues(obj, clazz, attributeName, 3);
+    }
+
+    /**
+     * 获取注解
+     *
+     * @param obj           对象
+     * @param clazz         注解类型
+     * @param attributeName 注解属性名
+     * @param type          执行类型
+     *                      <br> type=1 -> 类名 <br/>
+     *                      <br> type=2 -> 方法 <br/>
+     *                      <br> type=3 -> 变量 <br/>
+     * @return 注解
+     */
+    public static <A extends Annotation> Annotation getAnnotation(Object obj, Class<A> clazz, String attributeName, Integer type) {
+        try {
+            A annotation = null;
+            if (1 == type) {
+                annotation = obj.getClass().getAnnotation(clazz);
+            } else if (2 == type) {
+                Field field = obj.getClass().getDeclaredField(attributeName);
+                annotation = field.getAnnotation(clazz);
+            } else if (3 == type) {
+                Method[] methods = obj.getClass().getDeclaredMethods();
+                for (Method method : methods) {
+                    if (attributeName.equals(method.getName())) {
+                        annotation = method.getAnnotation(clazz);
+                        break;
+                    }
+                }
+            }
+            return annotation;
+        } catch (Exception e) {
+            log.error("获取注解指定值异常!", e);
+        }
+        return null;
+    }
+
+    /**
+     * 获取注解指定属性值
+     *
+     * @param obj             对象
+     * @param clazz           注解类型
+     * @param attributeName   方法名称
+     * @param annotationField 注解属性名
+     * @param type            执行类型
+     * @return 注解属性值
+     */
+    private static <A extends Annotation, V> V getAnnotationValue(Object obj, Class<A> clazz, String attributeName, String annotationField, Integer type) {
+        try {
+            Annotation annotation = getAnnotation(obj, clazz, attributeName, type);
+            Field field = annotation.getClass().getDeclaredField(annotationField);
+            field.setAccessible(true);
+            return (V) field.get(annotation);
+        } catch (Exception e) {
+            log.error("获取注解指定值异常!", e);
+        }
+        return null;
+    }
+
+    /**
+     * 获取注解所有属性值
+     *
+     * @param obj           对象
+     * @param clazz         注解类型
+     * @param attributeName 注解属性名
+     * @param type          执行类型
+     * @return 注解属性值
+     */
+    private static <A extends Annotation, V> Map<String, V> getAnnotationValues(Object obj, Class<A> clazz, String attributeName, Integer type) {
+        try {
+            Annotation annotation = getAnnotation(obj, clazz, attributeName, type);
+            Field[] fields = annotation.getClass().getDeclaredFields();
+            Map<String, V> map = new HashMap<>();
+            for (Field field : fields) {
+                String key = field.getName();
+                field.setAccessible(true);
+                Object value = field.get(annotation);
+                map.put(key, (V) value);
+            }
+            return map;
+        } catch (Exception e) {
+            log.error("获取注解指定值异常!", e);
+        }
+        return null;
+    }
+
 }

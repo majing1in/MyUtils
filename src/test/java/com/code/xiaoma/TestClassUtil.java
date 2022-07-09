@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @Author: Xiaoma
+ * @Author: majing1in
  * @Date: 2022/07/07 20:58
  * @Email: 2533144458@qq.com
  */
 public class TestClassUtil {
 
-    @Test
+    @Test(timeout = 100, expected = Exception.class)
     public void test01() {
         Map<String, Object> map = new HashMap<>();
         map.put("code", 1);

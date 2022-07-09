@@ -42,7 +42,6 @@ public class HttpUtil {
                     return null;
                 }
             }};
-            // 设置HTTPS请求证书
             SSLContext context = SSLContext.getInstance("SSL");
             context.init(null, x509TrustManager, new SecureRandom());
             HttpsURLConnection.setDefaultSSLSocketFactory(context.getSocketFactory());
@@ -74,7 +73,6 @@ public class HttpUtil {
      */
     public static String doGet(String path, String proxyIp, Integer proxyPort, Map<String, String> params, Map<String, String> headers) {
         if (params != null && !params.isEmpty()) {
-            // GET请求参数在URL上
             StringBuilder paramsBuilder = new StringBuilder("?");
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 paramsBuilder.append(entry.getKey());
@@ -156,7 +154,6 @@ public class HttpUtil {
             HttpURLConnection connection = createHttpUrlConnection(path, proxyIp, proxyPort, "POST", headers);
             connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             OutputStream outputStream = connection.getOutputStream();
-            // 构建表单参数
             StringBuilder paramsBuilder = new StringBuilder();
             if (params != null && !params.isEmpty()) {
                 for (Map.Entry<String, Object> entry : params.entrySet()) {
@@ -176,38 +173,6 @@ public class HttpUtil {
             return result;
         } catch (Exception e) {
             log.error("执行doPost方法异常!", e);
-        }
-        return null;
-    }
-
-    /**
-     * 发送POST请求，传输文件
-     *
-     * @param path        请求地址
-     * @param filePath    文件路径
-     * @param headers     文件路径
-     * @param contentType MIME类型
-     */
-    public static String doPost(String path, String filePath, Map<String, String> headers, String contentType) {
-        HttpURLConnection connection = createHttpUrlConnection(path, "POST", headers);
-        connection.setRequestProperty("Content-Type", contentType);
-        try {
-            File file = new File(filePath);
-            FileInputStream fis = new FileInputStream(file);
-            OutputStream outputStream = connection.getOutputStream();
-            byte[] bytes = new byte[8192];
-            while (fis.read(bytes) != -1) {
-                outputStream.write(bytes);
-            }
-            fis.close();
-            outputStream.flush();
-            outputStream.close();
-            InputStream inputStream = connection.getInputStream();
-            String result = get(inputStream);
-            connection.disconnect();
-            return result;
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
@@ -317,32 +282,38 @@ public class HttpUtil {
 
     /**
      * 获取客户端真实IP地址
-     * <p>
-     * WL-Proxy-Client-IP=211.161.1.239
-     * Proxy-Client-IP=211.161.1.239
-     * X-Forwarded-For=211.161.1.239
-     * <p/>
      *
      * @param request 请求request对象
      * @return IP地址
      */
-    public String getIpAddr(HttpServletRequest request) {
-        String ipAddress = request.getHeader("x-forwarded-for");
+    public String getIpAddress(HttpServletRequest request) {
+        // X-Forwarded-For:Squid服务代理
+        String ipAddress = request.getHeader("X-Forwarded-For");
         if (ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            // Proxy-Client-IP:apache服务代理
             ipAddress = request.getHeader("Proxy-Client-IP");
         }
         if (ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            // WL-Proxy-Client-IP:WebLogic服务代理
             ipAddress = request.getHeader("WL-Proxy-Client-IP");
         }
+        if (ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            // HTTP_CLIENT_IP:有些代理服务器
+            ipAddress = request.getHeader("HTTP_CLIENT_IP");
+        }
+        if (ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            // X-Real-IP:Nginx服务代理
+            ipAddress = request.getHeader("X-Real-IP");
+        }
+        // 还是不能获取到，最后再通过request.getRemoteAddr()获取
         if (ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
             ipAddress = request.getRemoteAddr();
             if (ipAddress.equals("127.0.0.1") || ipAddress.equals("0:0:0:0:0:0:0:1")) {
                 try {
-                    // 根据网卡取本机配置的IP
                     InetAddress inet = InetAddress.getLocalHost();
                     ipAddress = inet.getHostAddress();
                 } catch (UnknownHostException e) {
-                    e.printStackTrace();
+                    log.error("获取ipAddress失败!", e);
                 }
             }
         }
