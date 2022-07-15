@@ -1,4 +1,4 @@
-package com.xiaoma.code.Entity;
+package com.code.xiaoma.Entity;
 
 public class Entity<T> {
     private Integer code;
