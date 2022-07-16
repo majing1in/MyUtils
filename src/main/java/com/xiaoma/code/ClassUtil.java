@@ -215,8 +215,8 @@ public class ClassUtil {
      * @return 注解
      */
     public static <A extends Annotation> Annotation getAnnotation(Object obj, Class<A> clazz, String attributeName, Integer type) {
+        A annotation = null;
         try {
-            A annotation = null;
             if (1 == type) {
                 annotation = obj.getClass().getAnnotation(clazz);
             } else if (2 == type) {
@@ -231,11 +231,10 @@ public class ClassUtil {
                     }
                 }
             }
-            return annotation;
         } catch (Exception e) {
             log.error("获取注解指定值异常!", e);
         }
-        return null;
+        return annotation;
     }
 
     /**
@@ -245,7 +244,6 @@ public class ClassUtil {
      * @param clazz           注解类型
      * @param attributeName   方法名称
      * @param annotationField 注解属性名
-     * @param type            执行类型
      * @return 注解属性值
      */
     private static <A extends Annotation, V> V getAnnotationValue(Object obj, Class<A> clazz, String attributeName, String annotationField, Integer type) {
@@ -266,7 +264,6 @@ public class ClassUtil {
      * @param obj           对象
      * @param clazz         注解类型
      * @param attributeName 注解属性名
-     * @param type          执行类型
      * @return 注解属性值
      */
     private static <A extends Annotation, V> Map<String, V> getAnnotationValues(Object obj, Class<A> clazz, String attributeName, Integer type) {
